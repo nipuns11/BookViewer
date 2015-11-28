@@ -1,5 +1,5 @@
 //
-//  DetailViewController.swift
+//  FavouriteTableViewController.swift
 //  BookViewer
 //
 //  Created by Colm Du Ve on 23/11/2015.
@@ -8,77 +8,33 @@
 
 import UIKit
 
-class DetailViewController: UIViewController {
+class FavouriteTableViewController: UITableViewController {
 
-    @IBOutlet weak var detailAuthorLabel: UILabel!
-    @IBOutlet weak var detailTitleLabel: UILabel!
-
+    var detailViewController: DetailViewController? = nil
+    var objects = [AnyObject]()
     var appDelegate: AppDelegate!
     
-    var detailItem: AnyObject? {
-        didSet {
-            // Update the view.
-            self.configureView()
-        }
-    }
-
-    func configureView() {
-        // Update the user interface for the detail item.
-        if let detail = self.detailItem as? [String: String] {
-            if let title = self.detailTitleLabel {
-                title.text = detail["title"]
-            }
-            if let author = self.detailAuthorLabel {
-                author.text = detail["author_first_name"]! + " " + detail["author_last_name"]!
-            }
-        }
-    }
-
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
-        self.configureView()
+        
         appDelegate = UIApplication.sharedApplication().delegate as? AppDelegate
-        
-        let icon = FAKFontAwesome.heartIconWithSize(20)
-        icon.addAttribute(NSForegroundColorAttributeName, value: UIColor.whiteColor())
-        let button = UIBarButtonItem(image: icon.imageWithSize(CGSize(width: 20, height: 20)), style: .Plain, target: self, action: "addToFavourites")
-        self.navigationItem.rightBarButtonItem = button
-
-        
-    }
-
-    override func didReceiveMemoryWarning() {
-        super.didReceiveMemoryWarning()
-        // Dispose of any resources that can be recreated.
-    }
-
-
-    func addToFavourites() {
         let session = NSURLSession.sharedSession()
         
         let defaults = NSUserDefaults.standardUserDefaults()
-
-        guard let userId = defaults.objectForKey("userId") else {
+        
+        guard let user = defaults.objectForKey("userId") as? String else {
             print("There was an error retrieving your user number")
             return
         }
         
-        var bookId = 0
-        if let detail = self.detailItem as? [String: String] {
-            if let id = detail["id"] {
-                bookId = Int(id)!
-            }
-        }
-        
         /* Set the parameters */
         let methodParameters = [
-            "book_id": bookId,
-            "user_id": userId
+            "id": user
         ]
         
         /* Build the URL */
-        let urlString = appDelegate.baseURLString + "save_favorites.php" + appDelegate.escapedParameters(methodParameters)
+        let urlString = appDelegate.baseURLString + "get_favorites.php" + appDelegate.escapedParameters(methodParameters)
         let url = NSURL(string: urlString)!
         
         /* Configure the request */
@@ -135,10 +91,60 @@ class DetailViewController: UIViewController {
             
             print(results)
             
+            /* Use the data! */
+            self.objects = results
+            
+            dispatch_async(dispatch_get_main_queue()) {
+                self.tableView.reloadData()
+            }
         }
         
         /* Start the request */
         task.resume()
+        
     }
-}
+    
+    override func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning()
+        // Dispose of any resources that can be recreated.
+    }
+    
+    // MARK: - Segues
+    
+    override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
+        if segue.identifier == "showDetail" {
+            if let indexPath = self.tableView.indexPathForSelectedRow {
+                let object = objects[indexPath.row] as! [String: String]
+                let controller = segue.destinationViewController as! DetailViewController
+                controller.detailItem = object
+                controller.navigationItem.leftBarButtonItem = self.splitViewController?.displayModeButtonItem()
+                controller.navigationItem.leftItemsSupplementBackButton = true
+            }
+        }
+    }
+    
+    // MARK: - Table View
+    
+    override func numberOfSectionsInTableView(tableView: UITableView) -> Int {
+        return 1
+    }
+    
+    override func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return objects.count
+    }
+    
+    override func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCellWithIdentifier("Cell", forIndexPath: indexPath)
+        
+        let object = objects[indexPath.row] as! [String: String]
+        cell.textLabel!.text = object["title"]
+        cell.detailTextLabel!.text = object["author_first_name"]! + " " + object["author_last_name"]!
+        return cell
+    }
+    
+    override func tableView(tableView: UITableView, canEditRowAtIndexPath indexPath: NSIndexPath) -> Bool {
+        // Return false if you do not want the specified item to be editable.
+        return false
+    }
 
+}
