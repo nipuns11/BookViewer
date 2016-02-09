@@ -1,10 +1,4 @@
-//
-//  AppDelegate.swift
-//  BookViewer
-//
-//  Created by Colm Du Ve on 23/11/2015.
-//  Copyright © 2015 Dooversoft. All rights reserved.
-//
+
 
 import UIKit
 
